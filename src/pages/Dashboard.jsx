@@ -23,7 +23,6 @@ export default function Dashboard({ bets, onNavigate, onNewBet, onEditBet, onUpd
           </div>
           <h2>Lleva el registro claro<br />de cada <em>jugada.</em></h2>
           <p>Anota tus movimientos en segundos, corrige cualquier dato cuando quieras y consulta tu rendimiento real.</p>
-          <button className="light-button hero-cta" onClick={onNewBet}>+ Anotar jugada</button>
         </div>
         <div className="hero-score" aria-label={`Retorno de inversión ${summary.roi.toFixed(1)} por ciento`}>
           <span>ROI ACTUAL</span>

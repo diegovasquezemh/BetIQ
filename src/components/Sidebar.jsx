@@ -1,4 +1,4 @@
-import { BarChart3, History, LayoutDashboard, Plus, X } from 'lucide-react'
+import { BarChart3, History, LayoutDashboard, X } from 'lucide-react'
 import Logo from './Logo.jsx'
 
 const links = [
@@ -7,15 +7,10 @@ const links = [
   { id: 'analytics', label: 'Estadísticas', icon: BarChart3 },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, isOpen, onClose, onNewBet }) {
+export default function Sidebar({ currentPage, onNavigate, isOpen, onClose }) {
   const navigate = (page) => {
     onNavigate(page)
     onClose()
-  }
-
-  const handleQuickNew = () => {
-    onClose()
-    onNewBet()
   }
 
   return (
@@ -32,11 +27,6 @@ export default function Sidebar({ currentPage, onNavigate, isOpen, onClose, onNe
             <X size={20} />
           </button>
         </div>
-
-        <button type="button" className="sidebar-quick-add" onClick={handleQuickNew}>
-          <Plus size={18} />
-          <span>Nuevo registro</span>
-        </button>
 
         <nav className="sidebar-nav" aria-label="Navegación principal">
           <span className="nav-eyebrow">Bitácora</span>
@@ -70,10 +60,6 @@ export default function Sidebar({ currentPage, onNavigate, isOpen, onClose, onNe
             <span>{label}</span>
           </button>
         ))}
-        <button type="button" className="mobile-nav-item mobile-nav-add" onClick={handleQuickNew}>
-          <Plus size={19} strokeWidth={2.4} />
-          <span>Anotar</span>
-        </button>
       </nav>
     </>
   )

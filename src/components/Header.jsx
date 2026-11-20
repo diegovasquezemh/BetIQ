@@ -23,7 +23,7 @@ export default function Header({ page, onMenu, onNewBet }) {
       </div>
       <button className="primary-button header-action" onClick={onNewBet}>
         <Plus size={18} />
-        <span>Anote rápido</span>
+        <span>Nuevo registro</span>
       </button>
     </header>
   )

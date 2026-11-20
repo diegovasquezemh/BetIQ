@@ -157,8 +157,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
   box-shadow: 0 -6px 20px rgba(13, 47, 35, 0.06);
 }
 .mobile-nav-item {
@@ -246,8 +246,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .hero-mobile-roi strong { color: var(--mint); font-family: 'Space Grotesk', sans-serif; }
 .hero-content h2 { margin-bottom: 8px; font-size: 26px; line-height: 1.08; letter-spacing: -1px; }
 .hero-content h2 em { color: var(--mint); font-style: normal; }
-.hero-content p { margin-bottom: 16px; color: rgba(255, 255, 255, 0.76); font-size: 12px; line-height: 1.5; }
-.hero-cta { width: 100%; }
+.hero-content p { margin-bottom: 0; color: rgba(255, 255, 255, 0.76); font-size: 12px; line-height: 1.5; }
 .hero-score { display: none; }
 
 /* Tarjetas de indicadores: 2x2 compacto en móvil */
