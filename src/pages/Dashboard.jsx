@@ -1,27 +1,34 @@
-import { Activity, CircleDollarSign, Crosshair, TrendingUp } from 'lucide-react'
+import { Activity, CircleDollarSign, Crosshair, Pencil, Trash2, TrendingUp } from 'lucide-react'
 import StatCard from '../components/StatCard.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { formatDate, formatMoney, getBetProfit, getSummary } from '../utils/betCalculations.js'
 
-export default function Dashboard({ bets, onNavigate }) {
+export default function Dashboard({ bets, onNavigate, onNewBet, onEditBet, onUpdateStatus, onDelete }) {
   const summary = getSummary(bets)
-  const recent = [...bets].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4)
-  const maxStake = Math.max(...bets.map((bet) => Number(bet.stake)), 1)
+  const sortedByDateDesc = [...bets].sort((a, b) => b.date.localeCompare(a.date))
+  const recent = sortedByDateDesc.slice(0, 5)
+  const chartBets = [...sortedByDateDesc].slice(0, 7).reverse()
+  const maxStake = Math.max(...chartBets.map((bet) => Number(bet.stake)), 1)
 
   return (
     <div className="page-stack">
       <section className="hero-card">
         <div className="hero-glow" />
         <div className="hero-content">
-          <span className="hero-pill">BET + IQ</span>
-          <h2>Convierte tus movimientos<br />en decisiones <em>inteligentes.</em></h2>
-          <p>Registra, compara y entiende cómo se comportan tus apuestas.</p>
-          <button className="light-button" onClick={() => onNavigate('new-bet')}>Registrar movimiento</button>
+          <div className="hero-top-row">
+            <span className="hero-pill">BITÁCORA PERSONAL</span>
+            <span className="hero-mobile-roi">
+              ROI: <strong>{summary.roi >= 0 ? '+' : ''}{summary.roi.toFixed(1)}%</strong>
+            </span>
+          </div>
+          <h2>Lleva el registro claro<br />de cada <em>jugada.</em></h2>
+          <p>Anota tus movimientos en segundos, corrige cualquier dato cuando quieras y consulta tu rendimiento real.</p>
+          <button className="light-button hero-cta" onClick={onNewBet}>+ Anotar jugada</button>
         </div>
         <div className="hero-score" aria-label={`Retorno de inversión ${summary.roi.toFixed(1)} por ciento`}>
           <span>ROI ACTUAL</span>
           <strong>{summary.roi >= 0 ? '+' : ''}{summary.roi.toFixed(1)}%</strong>
-          <small>{summary.total} apuestas registradas</small>
+          <small>{summary.total} {summary.total === 1 ? 'registro' : 'registros'}</small>
         </div>
       </section>
 
@@ -29,30 +36,30 @@ export default function Dashboard({ bets, onNavigate }) {
         <StatCard
           label="Balance neto"
           value={formatMoney(summary.profit)}
-          detail="Solo apuestas finalizadas"
+          detail="Ganancia o pérdida"
           icon={CircleDollarSign}
           tone={summary.profit >= 0 ? 'positive' : 'negative'}
         />
-        <StatCard label="Capital apostado" value={formatMoney(summary.invested)} detail="Total finalizado" icon={Activity} />
-        <StatCard label="Tasa de acierto" value={`${summary.hitRate.toFixed(0)}%`} detail="Ganadas vs. finalizadas" icon={Crosshair} />
-        <StatCard label="Pendientes" value={summary.pending} detail="Resultados por actualizar" icon={TrendingUp} />
+        <StatCard label="Total arriesgado" value={formatMoney(summary.invested)} detail="Jugadas finalizadas" icon={Activity} />
+        <StatCard label="Efectividad" value={`${summary.hitRate.toFixed(0)}%`} detail="Ganadas vs. finalizadas" icon={Crosshair} />
+        <StatCard label="Por resolver" value={summary.pending} detail="Jugadas pendientes" icon={TrendingUp} />
       </section>
 
       <section className="dashboard-grid">
         <article className="panel chart-panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">EXPOSICIÓN</p>
-              <h3>Monto por apuesta</h3>
+              <p className="eyebrow">HISTORIAL RECIENTE</p>
+              <h3>Monto por registro</h3>
             </div>
-            <span className="chart-legend"><i /> Capital</span>
+            <span className="chart-legend"><i /> Monto (USD)</span>
           </div>
-          <div className="bar-chart" aria-label="Gráfico de monto por apuesta">
-            {bets.slice(-7).map((bet) => (
-              <div className="bar-column" key={bet.id}>
+          <div className="bar-chart" aria-label="Gráfico de monto por registro">
+            {chartBets.map((bet) => (
+              <div className="bar-column" key={bet.id} title={`${bet.event} (${formatMoney(bet.stake)})`}>
                 <span className="bar-value">${bet.stake}</span>
                 <div className="bar-track">
-                  <span style={{ height: `${Math.max((bet.stake / maxStake) * 100, 8)}%` }} />
+                  <span style={{ height: `${Math.max((Number(bet.stake) / maxStake) * 100, 8)}%` }} />
                 </div>
                 <small>{bet.sport.slice(0, 3)}</small>
               </div>
@@ -61,44 +68,93 @@ export default function Dashboard({ bets, onNavigate }) {
         </article>
 
         <article className="panel insight-panel">
-          <p className="eyebrow">INSIGHT BETIQ</p>
-          <h3>{summary.hitRate >= 50 ? 'Tu registro va tomando forma.' : 'Cada resultado mejora tu análisis.'}</h3>
+          <p className="eyebrow">ESTADO DE TU BITÁCORA</p>
+          <h3>{summary.pending ? 'Tienes registros pendientes.' : 'Tu bitácora está al día.'}</h3>
           <p>
             {summary.pending
-              ? `Tienes ${summary.pending} apuesta${summary.pending > 1 ? 's' : ''} pendiente${summary.pending > 1 ? 's' : ''}. Actualízalas para obtener un ROI más preciso.`
-              : 'Todos tus resultados están actualizados. Mantén el hábito de registrar cada apuesta.'}
+              ? `Hay ${summary.pending} jugada${summary.pending > 1 ? 's' : ''} pendiente${summary.pending > 1 ? 's' : ''}. Cambia su resultado directamente en la lista inferior.`
+              : 'Todos tus registros tienen resultado asignado. Puedes cambiar el estado o editar cualquier dato cuando quieras.'}
           </p>
-          <button className="text-button" onClick={() => onNavigate('history')}>Revisar historial →</button>
+          <button className="text-button" onClick={() => onNavigate('history')}>Ver todos los registros →</button>
         </article>
       </section>
 
       <section className="panel recent-panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">ÚLTIMOS MOVIMIENTOS</p>
-            <h3>Apuestas recientes</h3>
+            <p className="eyebrow">ACCIONES RÁPIDAS</p>
+            <h3>Últimos registros</h3>
           </div>
-          <button className="text-button" onClick={() => onNavigate('history')}>Ver historial →</button>
+          <button className="text-button" onClick={() => onNavigate('history')}>Ver todos ({bets.length}) →</button>
         </div>
         <div className="table-wrap">
-          <table>
-            <thead><tr><th>Evento</th><th>Fecha</th><th>Monto</th><th>Cuota</th><th>Resultado</th><th>Ganancia</th></tr></thead>
+          <table className="responsive-table">
+            <thead>
+              <tr>
+                <th>Jugada / Selección</th>
+                <th>Fecha</th>
+                <th>Monto</th>
+                <th>Cuota</th>
+                <th>Estado</th>
+                <th>Balance</th>
+                <th aria-label="Acciones">Acciones</th>
+              </tr>
+            </thead>
             <tbody>
-              {recent.map((bet) => (
-                <tr key={bet.id}>
-                  <td>
-                    <strong>{bet.modality === 'COMBINADA' ? `Combinada de ${bet.legs?.length || 2} selecciones` : bet.event}</strong>
-                    <small>{bet.modality || 'SIMPLE'} · {bet.moment || 'ANTES DEL EVENTO'} · {bet.selection}</small>
-                  </td>
-                  <td>{formatDate(bet.date)}</td>
-                  <td>{formatMoney(bet.stake)}</td>
-                  <td>{Number(bet.odds).toFixed(2)}</td>
-                  <td><StatusBadge status={bet.status} /></td>
-                  <td className={getBetProfit(bet) > 0 ? 'positive-text' : getBetProfit(bet) < 0 ? 'negative-text' : ''}>
-                    {formatMoney(getBetProfit(bet))}
-                  </td>
-                </tr>
-              ))}
+              {recent.map((bet) => {
+                const profit = getBetProfit(bet)
+                return (
+                  <tr key={bet.id}>
+                    <td className="cell-main">
+                      <strong>{bet.event}</strong>
+                      <small>
+                        {bet.modality === 'COMBINADA' ? `Combinada (${bet.legs?.length || 2})` : bet.sport}
+                        {bet.moment === 'EN VIVO' ? ' · En vivo' : ''}
+                        {bet.selection ? ` · ${bet.selection}` : ''}
+                        {bet.bookmaker ? ` · ${bet.bookmaker}` : ''}
+                      </small>
+                    </td>
+                    <td data-label="Fecha">{formatDate(bet.date)}</td>
+                    <td data-label="Monto">{formatMoney(bet.stake)}</td>
+                    <td data-label="Cuota">{Number(bet.odds).toFixed(2)}</td>
+                    <td className="cell-status" data-label="Estado">
+                      <StatusBadge
+                        status={bet.status}
+                        onChange={(nextStatus) => onUpdateStatus(bet.id, nextStatus)}
+                        ariaLabel={`Cambiar estado de ${bet.event}`}
+                      />
+                    </td>
+                    <td
+                      data-label="Balance"
+                      className={profit > 0 ? 'positive-text' : profit < 0 ? 'negative-text' : ''}
+                    >
+                      {profit > 0 ? `+${formatMoney(profit)}` : formatMoney(profit)}
+                    </td>
+                    <td className="cell-actions">
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="action-icon-button"
+                          onClick={() => onEditBet(bet)}
+                          title="Editar registro"
+                          aria-label={`Editar ${bet.event}`}
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="action-icon-button danger"
+                          onClick={() => onDelete(bet.id)}
+                          title="Eliminar registro"
+                          aria-label={`Eliminar ${bet.event}`}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

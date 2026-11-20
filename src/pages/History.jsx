@@ -1,71 +1,169 @@
 import { useState } from 'react'
-import { Search, Trash2 } from 'lucide-react'
+import { Pencil, RotateCcw, Search, Trash2 } from 'lucide-react'
 import EmptyState from '../components/EmptyState.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
+import { sports } from '../data/sampleBets.js'
 import { formatDate, formatMoney, getBetProfit } from '../utils/betCalculations.js'
 
-export default function History({ bets, onUpdateStatus, onDelete, onNewBet }) {
+const statusFilters = [
+  { id: 'all', label: 'Todas' },
+  { id: 'pending', label: 'Pendientes' },
+  { id: 'won', label: 'Ganadas' },
+  { id: 'lost', label: 'Perdidas' },
+  { id: 'void', label: 'Anuladas' },
+]
+
+export default function History({ bets, onUpdateStatus, onEditBet, onDelete, onNewBet }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
+  const [sportFilter, setSportFilter] = useState('all')
 
   const normalizedQuery = query.trim().toLowerCase()
   const filteredBets = [...bets]
     .filter((bet) => status === 'all' || bet.status === status)
-    .filter((bet) => [bet.event, bet.sport, bet.bookmaker, bet.selection].join(' ').toLowerCase().includes(normalizedQuery))
+    .filter((bet) => sportFilter === 'all' || bet.sport === sportFilter)
+    .filter((bet) =>
+      [bet.event, bet.sport, bet.bookmaker, bet.selection, bet.market]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedQuery)
+    )
     .sort((a, b) => b.date.localeCompare(a.date))
+
+  const hasActiveFilters = query.trim() !== '' || status !== 'all' || sportFilter !== 'all'
+
+  const resetFilters = () => {
+    setQuery('')
+    setStatus('all')
+    setSportFilter('all')
+  }
 
   return (
     <section className="panel history-panel">
       <div className="filter-bar">
         <label className="search-field">
           <Search size={18} />
-          <input type="text" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar evento, deporte o casa..." />
+          <input
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar partido, selección, deporte o casa..."
+          />
         </label>
-        <label className="compact-select">
-          <span>Mostrar</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="all">Todas</option>
-            <option value="pending">Pendientes</option>
-            <option value="won">Ganadas</option>
-            <option value="lost">Perdidas</option>
-            <option value="void">Anuladas</option>
-          </select>
-        </label>
+
+        <div className="filter-controls">
+          <div className="status-pills" role="group" aria-label="Filtrar por estado">
+            {statusFilters.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`filter-pill ${status === item.id ? 'is-selected' : ''}`}
+                onClick={() => setStatus(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="filter-subrow">
+            <label className="compact-select">
+              <span>Deporte</span>
+              <select value={sportFilter} onChange={(event) => setSportFilter(event.target.value)}>
+                <option value="all">Todos</option>
+                {sports.map((sport) => (
+                  <option key={sport} value={sport}>{sport}</option>
+                ))}
+                <option value="Combinada">Combinada</option>
+              </select>
+            </label>
+
+            {hasActiveFilters && (
+              <button type="button" className="reset-filter-button" onClick={resetFilters}>
+                <RotateCcw size={14} />
+                <span>Limpiar</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {filteredBets.length ? (
         <div className="table-wrap history-table">
-          <table>
-            <thead><tr><th>Evento</th><th>Fecha</th><th>Casa</th><th>Monto</th><th>Cuota</th><th>Estado</th><th>Retorno neto</th><th aria-label="Acciones" /></tr></thead>
+          <table className="responsive-table">
+            <thead>
+              <tr>
+                <th>Jugada / Detalle</th>
+                <th>Fecha</th>
+                <th>Casa</th>
+                <th>Monto</th>
+                <th>Cuota</th>
+                <th>Estado</th>
+                <th>Balance neto</th>
+                <th aria-label="Acciones">Acciones</th>
+              </tr>
+            </thead>
             <tbody>
-              {filteredBets.map((bet) => (
-                <tr key={bet.id}>
-                  <td>
-                    <strong>{bet.modality === 'COMBINADA' ? `Combinada de ${bet.legs?.length || 2} selecciones` : bet.event}</strong>
-                    <small>{bet.modality || 'SIMPLE'} · {bet.moment || 'ANTES DEL EVENTO'} · {bet.selection}</small>
-                  </td>
-                  <td>{formatDate(bet.date)}</td>
-                  <td>{bet.bookmaker}</td>
-                  <td>{formatMoney(bet.stake)}</td>
-                  <td>{Number(bet.odds).toFixed(2)}</td>
-                  <td>
-                    {bet.status === 'pending' ? (
-                      <select className="status-select" value={bet.status} onChange={(event) => onUpdateStatus(bet.id, event.target.value)} aria-label={`Actualizar ${bet.event}`}>
-                        <option value="pending">Pendiente</option>
-                        <option value="won">Ganada</option>
-                        <option value="lost">Perdida</option>
-                        <option value="void">Anulada</option>
-                      </select>
-                    ) : <StatusBadge status={bet.status} />}
-                  </td>
-                  <td className={getBetProfit(bet) > 0 ? 'positive-text' : getBetProfit(bet) < 0 ? 'negative-text' : ''}>{formatMoney(getBetProfit(bet))}</td>
-                  <td><button className="delete-button" onClick={() => onDelete(bet.id)} aria-label={`Eliminar ${bet.event}`}><Trash2 size={17} /></button></td>
-                </tr>
-              ))}
+              {filteredBets.map((bet) => {
+                const profit = getBetProfit(bet)
+                return (
+                  <tr key={bet.id}>
+                    <td className="cell-main">
+                      <strong>{bet.event}</strong>
+                      <small>
+                        {bet.modality === 'COMBINADA' ? `Combinada (${bet.legs?.length || 2} selecciones)` : bet.sport}
+                        {bet.moment === 'EN VIVO' ? ` · En vivo${bet.liveMinute ? ` (${bet.liveMinute})` : ''}` : ''}
+                        {bet.selection ? ` · ${bet.selection}` : ''}
+                        {bet.market && bet.modality !== 'COMBINADA' ? ` · ${bet.market}` : ''}
+                      </small>
+                    </td>
+                    <td data-label="Fecha">{formatDate(bet.date)}</td>
+                    <td data-label="Casa">{bet.bookmaker || '—'}</td>
+                    <td data-label="Monto">{formatMoney(bet.stake)}</td>
+                    <td data-label="Cuota">{Number(bet.odds).toFixed(2)}</td>
+                    <td className="cell-status" data-label="Estado">
+                      <StatusBadge
+                        status={bet.status}
+                        onChange={(nextStatus) => onUpdateStatus(bet.id, nextStatus)}
+                        ariaLabel={`Cambiar estado de ${bet.event}`}
+                      />
+                    </td>
+                    <td
+                      data-label="Balance"
+                      className={profit > 0 ? 'positive-text' : profit < 0 ? 'negative-text' : ''}
+                    >
+                      {profit > 0 ? `+${formatMoney(profit)}` : formatMoney(profit)}
+                    </td>
+                    <td className="cell-actions">
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="action-icon-button"
+                          onClick={() => onEditBet(bet)}
+                          title="Editar registro"
+                          aria-label={`Editar ${bet.event}`}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="action-icon-button danger"
+                          onClick={() => onDelete(bet.id)}
+                          title="Eliminar registro"
+                          aria-label={`Eliminar ${bet.event}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
-      ) : <EmptyState onNewBet={onNewBet} />}
+      ) : (
+        <EmptyState onNewBet={onNewBet} hasFilters={hasActiveFilters} onResetFilters={resetFilters} />
+      )}
     </section>
   )
 }

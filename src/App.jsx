@@ -13,7 +13,6 @@ const STORAGE_KEY = 'betiq-bets-v1'
 function getInitialBets() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    // Migra registros creados con la versión anterior del formulario.
     return saved
       ? JSON.parse(saved).map((bet) => ({
           modality: bet.type === 'COMBINADA' ? 'COMBINADA' : 'SIMPLE',
@@ -29,8 +28,10 @@ function getInitialBets() {
 export default function App() {
   const [bets, setBets] = useState(getInitialBets)
   const [page, setPage] = useState('dashboard')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingBet, setEditingBet] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [toast, setToast] = useState('')
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bets))
@@ -38,41 +39,114 @@ export default function App() {
 
   useEffect(() => {
     if (!toast) return undefined
-    const timeout = window.setTimeout(() => setToast(''), 2600)
+    const timeout = window.setTimeout(() => setToast(null), 4500)
     return () => window.clearTimeout(timeout)
   }, [toast])
 
-  const addBet = (bet) => {
-    setBets((current) => [...current, bet])
-    setPage('history')
-    setToast('Apuesta registrada correctamente.')
+  const showToast = (message, previousBets = null) => {
+    setToast({ message, previousBets, id: Date.now() })
+  }
+
+  const handleUndo = () => {
+    if (toast && toast.previousBets) {
+      setBets(toast.previousBets)
+      setToast({ message: 'Acción deshecha.', previousBets: null, id: Date.now() })
+    }
+  }
+
+  const openNewBetModal = () => {
+    setEditingBet(null)
+    setIsModalOpen(true)
+  }
+
+  const openEditBetModal = (bet) => {
+    setEditingBet(bet)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setEditingBet(null)
+  }
+
+  const saveBet = (betData) => {
+    const previousBets = [...bets]
+    const exists = bets.some((item) => item.id === betData.id)
+
+    if (exists) {
+      setBets((current) => current.map((item) => (item.id === betData.id ? betData : item)))
+      showToast('Registro actualizado.', previousBets)
+    } else {
+      setBets((current) => [betData, ...current])
+      showToast('Registro guardado en tu bitácora.', previousBets)
+    }
+    closeModal()
   }
 
   const updateStatus = (id, status) => {
-    setBets((current) => current.map((bet) => bet.id === id ? { ...bet, status } : bet))
-    setToast('Resultado actualizado.')
+    const target = bets.find((bet) => bet.id === id)
+    if (!target || target.status === status) return
+    const previousBets = [...bets]
+    setBets((current) => current.map((bet) => (bet.id === id ? { ...bet, status } : bet)))
+    showToast('Estado actualizado.', previousBets)
   }
 
   const deleteBet = (id) => {
-    if (!window.confirm('¿Quieres eliminar esta apuesta del historial?')) return
+    const previousBets = [...bets]
     setBets((current) => current.filter((bet) => bet.id !== id))
-    setToast('Apuesta eliminada.')
+    showToast('Registro eliminado.', previousBets)
   }
 
   return (
     <div className="app-shell">
-      <Sidebar currentPage={page} onNavigate={setPage} isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <Sidebar
+        currentPage={page}
+        onNavigate={setPage}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNewBet={openNewBetModal}
+      />
       <main className="main-content">
-        <Header page={page} onMenu={() => setMenuOpen(true)} onNewBet={() => setPage('new-bet')} />
+        <Header page={page} onMenu={() => setMenuOpen(true)} onNewBet={openNewBetModal} />
         <div className="content-area">
-          {page === 'dashboard' && <Dashboard bets={bets} onNavigate={setPage} />}
-          {page === 'new-bet' && <NewBet onSave={addBet} onCancel={() => setPage('dashboard')} />}
-          {page === 'history' && <History bets={bets} onUpdateStatus={updateStatus} onDelete={deleteBet} onNewBet={() => setPage('new-bet')} />}
+          {page === 'dashboard' && (
+            <Dashboard
+              bets={bets}
+              onNavigate={setPage}
+              onNewBet={openNewBetModal}
+              onEditBet={openEditBetModal}
+              onUpdateStatus={updateStatus}
+              onDelete={deleteBet}
+            />
+          )}
+          {page === 'history' && (
+            <History
+              bets={bets}
+              onUpdateStatus={updateStatus}
+              onEditBet={openEditBetModal}
+              onDelete={deleteBet}
+              onNewBet={openNewBetModal}
+            />
+          )}
           {page === 'analytics' && <Analytics bets={bets} />}
         </div>
         <Footer />
       </main>
-      <div className={`toast ${toast ? 'is-visible' : ''}`} role="status">{toast}</div>
+      {isModalOpen && (
+        <NewBet
+          initialBet={editingBet}
+          onSave={saveBet}
+          onCancel={closeModal}
+        />
+      )}
+      <div className={`toast ${toast ? 'is-visible' : ''}`} role="status" aria-live="polite">
+        <span>{toast ? toast.message : ''}</span>
+        {toast && toast.previousBets && (
+          <button type="button" className="toast-undo" onClick={handleUndo}>
+            Deshacer
+          </button>
+        )}
+      </div>
     </div>
   )
 }

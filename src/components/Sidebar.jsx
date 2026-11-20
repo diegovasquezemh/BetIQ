@@ -1,17 +1,21 @@
-import { BarChart3, History, LayoutDashboard, PlusCircle, X } from 'lucide-react'
+import { BarChart3, History, LayoutDashboard, Plus, X } from 'lucide-react'
 import Logo from './Logo.jsx'
 
 const links = [
   { id: 'dashboard', label: 'Resumen', icon: LayoutDashboard },
-  { id: 'new-bet', label: 'Registrar apuesta', icon: PlusCircle },
-  { id: 'history', label: 'Historial', icon: History },
-  { id: 'analytics', label: 'Análisis', icon: BarChart3 },
+  { id: 'history', label: 'Registros', icon: History },
+  { id: 'analytics', label: 'Estadísticas', icon: BarChart3 },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, isOpen, onClose }) {
+export default function Sidebar({ currentPage, onNavigate, isOpen, onClose, onNewBet }) {
   const navigate = (page) => {
     onNavigate(page)
     onClose()
+  }
+
+  const handleQuickNew = () => {
+    onClose()
+    onNewBet()
   }
 
   return (
@@ -29,8 +33,13 @@ export default function Sidebar({ currentPage, onNavigate, isOpen, onClose }) {
           </button>
         </div>
 
+        <button type="button" className="sidebar-quick-add" onClick={handleQuickNew}>
+          <Plus size={18} />
+          <span>Nuevo registro</span>
+        </button>
+
         <nav className="sidebar-nav" aria-label="Navegación principal">
-          <span className="nav-eyebrow">Mi espacio</span>
+          <span className="nav-eyebrow">Bitácora</span>
           {links.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -45,9 +54,27 @@ export default function Sidebar({ currentPage, onNavigate, isOpen, onClose }) {
 
         <div className="sidebar-message">
           <span className="message-icon">iQ</span>
-          <p><strong>Decide con datos.</strong><br />Nunca apuestes más de lo que puedes permitirte perder.</p>
+          <p><strong>Tu registro personal.</strong><br />Anota tus jugadas para conocer tu balance real sin suposiciones.</p>
         </div>
       </aside>
+
+      <nav className="mobile-bottom-nav" aria-label="Navegación rápida móvil">
+        {links.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className={`mobile-nav-item ${currentPage === id ? 'is-active' : ''}`}
+            onClick={() => navigate(id)}
+          >
+            <Icon size={19} strokeWidth={2} />
+            <span>{label}</span>
+          </button>
+        ))}
+        <button type="button" className="mobile-nav-item mobile-nav-add" onClick={handleQuickNew}>
+          <Plus size={19} strokeWidth={2.4} />
+          <span>Anotar</span>
+        </button>
+      </nav>
     </>
   )
 }
