@@ -1,6 +1,7 @@
 import { Award, CircleAlert, Goal, Scale } from 'lucide-react'
 import StatCard from '../components/StatCard.jsx'
 import { formatMoney, getBetProfit, getSummary } from '../utils/betCalculations.js'
+import { getCapitalInsight } from '../utils/capitalInsight.js'
 
 export default function Analytics({ bets }) {
   const summary = getSummary(bets)
@@ -15,6 +16,7 @@ export default function Analytics({ bets }) {
     return result
   }, {})
   const sportsData = Object.values(grouped).sort((a, b) => b.invested - a.invested)
+  const insight = getCapitalInsight(sportsData, summary)
   const maxInvested = Math.max(...sportsData.map((item) => item.invested), 1)
   const biggestWin = Math.max(0, ...settled.map(getBetProfit))
   const averageStake = bets.length
@@ -66,19 +68,21 @@ export default function Analytics({ bets }) {
           )}
         </article>
 
-        <article className="panel health-card">
+        <article className="panel health-card" aria-label="Gestión de capital">
           <span className="health-mark">BET<span>IQ</span></span>
           <p className="eyebrow">GESTIÓN DE CAPITAL</p>
-          <h3>El valor de registrar cada movimiento.</h3>
-          <div className="health-meter">
-            <span style={{ width: `${Math.min(Math.max(summary.hitRate, 8), 100)}%` }} />
-          </div>
-          <p>Llevar una bitácora honesta de aciertos y fallos te permite ver dónde tienes mejor retorno real.</p>
-          <ul>
-            <li>Registra tanto las jugadas ganadas como las perdidas.</li>
-            <li>Usa los filtros de la pestaña Registros para auditar tu historial.</li>
-            <li>Si cometiste un error al anotar, edita el registro en cualquier momento.</li>
-          </ul>
+          <h3>{insight.title}</h3>
+          <p>{insight.detail}</p>
+          {settled.length > 0 && (
+            <>
+              <p className="capital-hit-rate">
+                Porcentaje de aciertos <strong>{summary.hitRate.toFixed(0)} %</strong>
+              </p>
+              <div className="health-meter" aria-hidden="true">
+                <span style={{ width: `${summary.hitRate}%` }} />
+              </div>
+            </>
+          )}
         </article>
       </section>
 

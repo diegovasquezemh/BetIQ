@@ -1,9 +1,10 @@
 import { Activity, CircleDollarSign, Crosshair, Pencil, Trash2, TrendingUp } from 'lucide-react'
+import BookmakerPerformance from '../components/BookmakerPerformance.jsx'
 import StatCard from '../components/StatCard.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { formatDate, formatMoney, getBetProfit, getSummary } from '../utils/betCalculations.js'
 
-export default function Dashboard({ bets, onNavigate, onNewBet, onEditBet, onUpdateStatus, onDelete }) {
+export default function Dashboard({ bets, onNavigate, onEditBet, onUpdateStatus, onDelete }) {
   const summary = getSummary(bets)
   const sortedByDateDesc = [...bets].sort((a, b) => b.date.localeCompare(a.date))
   const recent = sortedByDateDesc.slice(0, 5)
@@ -56,7 +57,7 @@ export default function Dashboard({ bets, onNavigate, onNewBet, onEditBet, onUpd
           <div className="bar-chart" aria-label="Gráfico de monto por registro">
             {chartBets.map((bet) => (
               <div className="bar-column" key={bet.id} title={`${bet.event} (${formatMoney(bet.stake)})`}>
-                <span className="bar-value">${bet.stake}</span>
+                <span className="bar-value">${Number(bet.stake)}</span>
                 <div className="bar-track">
                   <span style={{ height: `${Math.max((Number(bet.stake) / maxStake) * 100, 8)}%` }} />
                 </div>
@@ -74,9 +75,11 @@ export default function Dashboard({ bets, onNavigate, onNewBet, onEditBet, onUpd
               ? `Hay ${summary.pending} jugada${summary.pending > 1 ? 's' : ''} pendiente${summary.pending > 1 ? 's' : ''}. Cambia su resultado directamente en la lista inferior.`
               : 'Todos tus registros tienen resultado asignado. Puedes cambiar el estado o editar cualquier dato cuando quieras.'}
           </p>
-          <button className="text-button" onClick={() => onNavigate('history')}>Ver todos los registros →</button>
+          <button type="button" className="text-button" onClick={() => onNavigate('history')}>Ver todos los registros →</button>
         </article>
       </section>
+
+      <BookmakerPerformance bets={bets} onHistory={() => onNavigate('history')} />
 
       <section className="panel recent-panel">
         <div className="panel-heading">
@@ -84,18 +87,18 @@ export default function Dashboard({ bets, onNavigate, onNewBet, onEditBet, onUpd
             <p className="eyebrow">ACCIONES RÁPIDAS</p>
             <h3>Últimos registros</h3>
           </div>
-          <button className="text-button" onClick={() => onNavigate('history')}>Ver todos ({bets.length}) →</button>
+          <button type="button" className="text-button" onClick={() => onNavigate('history')}>Ver todos ({bets.length}) →</button>
         </div>
         <div className="table-wrap">
-          <table className="responsive-table">
+          <table className="responsive-table dashboard-table">
             <thead>
               <tr>
                 <th>Jugada / Selección</th>
                 <th>Fecha</th>
                 <th>Monto</th>
                 <th>Cuota</th>
-                <th>Estado</th>
                 <th>Balance</th>
+                <th>Estado</th>
                 <th aria-label="Acciones">Acciones</th>
               </tr>
             </thead>
@@ -113,21 +116,21 @@ export default function Dashboard({ bets, onNavigate, onNewBet, onEditBet, onUpd
                         {bet.bookmaker ? ` · ${bet.bookmaker}` : ''}
                       </small>
                     </td>
-                    <td data-label="Fecha">{formatDate(bet.date)}</td>
-                    <td data-label="Monto">{formatMoney(bet.stake)}</td>
-                    <td data-label="Cuota">{Number(bet.odds).toFixed(2)}</td>
+                    <td className="cell-half" data-label="Fecha">{formatDate(bet.date)}</td>
+                    <td className="cell-third" data-label="Monto">{formatMoney(bet.stake)}</td>
+                    <td className="cell-third" data-label="Cuota">{Number(bet.odds).toFixed(2)}</td>
+                    <td
+                      className={`cell-third ${profit > 0 ? 'positive-text' : profit < 0 ? 'negative-text' : ''}`}
+                      data-label="Balance"
+                    >
+                      {profit > 0 ? `+${formatMoney(profit)}` : formatMoney(profit)}
+                    </td>
                     <td className="cell-status" data-label="Estado">
                       <StatusBadge
                         status={bet.status}
                         onChange={(nextStatus) => onUpdateStatus(bet.id, nextStatus)}
                         ariaLabel={`Cambiar estado de ${bet.event}`}
                       />
-                    </td>
-                    <td
-                      data-label="Balance"
-                      className={profit > 0 ? 'positive-text' : profit < 0 ? 'negative-text' : ''}
-                    >
-                      {profit > 0 ? `+${formatMoney(profit)}` : formatMoney(profit)}
                     </td>
                     <td className="cell-actions">
                       <div className="row-actions">

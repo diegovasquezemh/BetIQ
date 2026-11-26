@@ -1,0 +1,112 @@
+name: Deploy BetIQ Site
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  workflow_dispatch:
+    inputs:
+      force_full_deploy:
+        description: 'Forzar subida completa de todos los archivos (ignora fechas de WebDAV)'
+        required: false
+        type: boolean
+        default: true
+      clean_build:
+        description: 'Compilacion limpia (ignorar cache de Vite)'
+        required: false
+        type: boolean
+        default: false
+
+# ⚡ CI / CD Workflow for BetIQ (Vite + React)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js & Cache npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      # ⚡ INSTALACIÓN ULTRA-RÁPIDA DE RCLONE (~1s vía Tool Cache)
+      - name: Setup Rclone
+        uses: AnimMouse/setup-rclone@v1
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 🚀 CACHÉ DE VITE (Se salta si clean_build es true)
+      - name: Restore Vite build cache
+        if: ${{ github.event.inputs.clean_build != 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.vite
+          key: ${{ runner.os }}-vite-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vite-${{ github.ref_name }}-
+            ${{ runner.os }}-vite-master-
+            ${{ runner.os }}-vite-main-
+            ${{ runner.os }}-vite-
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build BetIQ project (Vite)
+        run: npm run build
+
+      # 🚀 DEPLOY CON WEBDAV (RCLONE OPTIMIZADO)
+      - name: Deploy via WebDAV to betiq.diego.com.sv
+        env:
+          WEBDAV_URL: ${{ secrets.WEBDAV_URL }}
+          WEBDAV_USER: ${{ secrets.WEBDAV_USER }}
+          WEBDAV_PASS: ${{ secrets.WEBDAV_PASS }}
+          REMOTE_DIR: '/public_html/betiq.diego.com.sv'
+          FORCE_DEPLOY: ${{ github.event.inputs.force_full_deploy }}
+        run: |
+          export RCLONE_CONFIG_REMOTE_TYPE=webdav
+          export RCLONE_CONFIG_REMOTE_URL="$WEBDAV_URL"
+          export RCLONE_CONFIG_REMOTE_USER="$WEBDAV_USER"
+          export RCLONE_CONFIG_REMOTE_PASS="$(rclone obscure "$WEBDAV_PASS")"
+          export RCLONE_CONFIG_REMOTE_VENDOR=other
+
+          SYNC_FLAGS=""
+          if [ "$FORCE_DEPLOY" = "true" ]; then
+            echo "⚡ Modo forzado activado: sobreescribiendo todos los archivos ignorando timestamps de WebDAV."
+            SYNC_FLAGS="--ignore-times"
+          fi
+
+          echo "📦 Paso 1: Subir assets estáticos compilados (assets/) conservando hashes previos para evitar 404 de CSS/JS..."
+          if [ -d "dist/assets" ]; then
+            rclone copy dist/assets remote:"$REMOTE_DIR/assets" \
+              $SYNC_FLAGS \
+              --transfers 4 \
+              --checkers 4 \
+              --tpslimit 10 \
+              --retries 5 \
+              --retries-sleep 3s \
+              -v
+          fi
+
+          echo "🚀 Paso 2: Sincronizar index.html y archivos raíz..."
+          rclone sync dist remote:"$REMOTE_DIR" \
+            --ignore-times \
+            --exclude "assets/**" \
+            --exclude ".well-known/**" \
+            --delete-after \
+            --transfers 2 \
+            --checkers 2 \
+            --tpslimit 10 \
+            --retries 5 \
+            --retries-sleep 3s \
+            -v

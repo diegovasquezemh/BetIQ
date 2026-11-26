@@ -253,7 +253,6 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
                     onChange={updateField}
                     placeholder="Ej. Real Madrid vs. Valencia"
                     required
-                    autoFocus
                     className={errors.event ? 'campo-invalido' : ''}
                   />
                   {errors.event && <small className="field-error mensaje-error">{errors.event}</small>}
@@ -349,6 +348,7 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
                 <span>Monto arriesgado (USD) *</span>
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="0.01"
                   step="0.01"
                   name="stake"
@@ -365,6 +365,7 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
                 <span>{form.modality === 'COMBINADA' ? 'Cuota total calculada' : 'Cuota decimal *'}</span>
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="1.01"
                   step="0.01"
                   name="odds"

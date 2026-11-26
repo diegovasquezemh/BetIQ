@@ -1,31 +1,19 @@
-import { BarChart3, History, LayoutDashboard, X } from 'lucide-react'
+import { BarChart3, History, LayoutDashboard, UserRound } from 'lucide-react'
 import Logo from './Logo.jsx'
 
 const links = [
   { id: 'dashboard', label: 'Resumen', icon: LayoutDashboard },
   { id: 'history', label: 'Registros', icon: History },
   { id: 'analytics', label: 'Estadísticas', icon: BarChart3 },
+  { id: 'profile', label: 'Mi perfil', icon: UserRound },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, isOpen, onClose }) {
-  const navigate = (page) => {
-    onNavigate(page)
-    onClose()
-  }
-
+export default function Sidebar({ currentPage, onNavigate }) {
   return (
     <>
-      <button
-        className={`sidebar-backdrop ${isOpen ? 'is-visible' : ''}`}
-        aria-label="Cerrar menú"
-        onClick={onClose}
-      />
-      <aside className={`sidebar ${isOpen ? 'is-open' : ''}`}>
+      <aside className="sidebar">
         <div className="sidebar-top">
           <Logo />
-          <button className="icon-button sidebar-close" onClick={onClose} aria-label="Cerrar menú">
-            <X size={20} />
-          </button>
         </div>
 
         <nav className="sidebar-nav" aria-label="Navegación principal">
@@ -33,8 +21,9 @@ export default function Sidebar({ currentPage, onNavigate, isOpen, onClose }) {
           {links.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
+              type="button"
               className={`nav-link ${currentPage === id ? 'is-active' : ''}`}
-              onClick={() => navigate(id)}
+              onClick={() => onNavigate(id)}
             >
               <Icon size={19} strokeWidth={2} />
               <span>{label}</span>
@@ -48,15 +37,15 @@ export default function Sidebar({ currentPage, onNavigate, isOpen, onClose }) {
         </div>
       </aside>
 
-      <nav className="mobile-bottom-nav" aria-label="Navegación rápida móvil">
+      <nav className="mobile-bottom-nav" aria-label="Navegación principal móvil">
         {links.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
             className={`mobile-nav-item ${currentPage === id ? 'is-active' : ''}`}
-            onClick={() => navigate(id)}
+            onClick={() => onNavigate(id)}
           >
-            <Icon size={19} strokeWidth={2} />
+            <Icon size={20} strokeWidth={2.1} />
             <span>{label}</span>
           </button>
         ))}

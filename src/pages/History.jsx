@@ -67,9 +67,9 @@ export default function History({ bets, onUpdateStatus, onEditBet, onDelete, onN
 
           <div className="filter-subrow">
             <label className="compact-select">
-              <span>Deporte</span>
+              <span>Categoría</span>
               <select value={sportFilter} onChange={(event) => setSportFilter(event.target.value)}>
-                <option value="all">Todos</option>
+                <option value="all">Todas</option>
                 {sports.map((sport) => (
                   <option key={sport} value={sport}>{sport}</option>
                 ))}
@@ -97,8 +97,8 @@ export default function History({ bets, onUpdateStatus, onEditBet, onDelete, onN
                 <th>Casa</th>
                 <th>Monto</th>
                 <th>Cuota</th>
-                <th>Estado</th>
                 <th>Balance neto</th>
+                <th>Estado</th>
                 <th aria-label="Acciones">Acciones</th>
               </tr>
             </thead>
@@ -116,22 +116,22 @@ export default function History({ bets, onUpdateStatus, onEditBet, onDelete, onN
                         {bet.market && bet.modality !== 'COMBINADA' ? ` · ${bet.market}` : ''}
                       </small>
                     </td>
-                    <td data-label="Fecha">{formatDate(bet.date)}</td>
-                    <td data-label="Casa">{bet.bookmaker || '—'}</td>
-                    <td data-label="Monto">{formatMoney(bet.stake)}</td>
-                    <td data-label="Cuota">{Number(bet.odds).toFixed(2)}</td>
+                    <td className="cell-half" data-label="Fecha">{formatDate(bet.date)}</td>
+                    <td className="cell-half" data-label="Casa">{bet.bookmaker || '—'}</td>
+                    <td className="cell-third" data-label="Monto">{formatMoney(bet.stake)}</td>
+                    <td className="cell-third" data-label="Cuota">{Number(bet.odds).toFixed(2)}</td>
+                    <td
+                      className={`cell-third ${profit > 0 ? 'positive-text' : profit < 0 ? 'negative-text' : ''}`}
+                      data-label="Balance"
+                    >
+                      {profit > 0 ? `+${formatMoney(profit)}` : formatMoney(profit)}
+                    </td>
                     <td className="cell-status" data-label="Estado">
                       <StatusBadge
                         status={bet.status}
                         onChange={(nextStatus) => onUpdateStatus(bet.id, nextStatus)}
                         ariaLabel={`Cambiar estado de ${bet.event}`}
                       />
-                    </td>
-                    <td
-                      data-label="Balance"
-                      className={profit > 0 ? 'positive-text' : profit < 0 ? 'negative-text' : ''}
-                    >
-                      {profit > 0 ? `+${formatMoney(profit)}` : formatMoney(profit)}
                     </td>
                     <td className="cell-actions">
                       <div className="row-actions">

@@ -48,6 +48,40 @@ export const formatMoney = (value) =>
     minimumFractionDigits: 2,
   }).format(value)
 
+export function getBookmakerPerformance(bets) {
+  const groups = {}
+  const keys = []
+  let withoutBookmaker = 0
+
+  for (let i = 0; i < bets.length; i++) {
+    const bet = bets[i]
+    if (bet.status !== 'won' && bet.status !== 'lost') continue
+    const name = typeof bet.bookmaker === 'string' ? bet.bookmaker.trim().replace(/\s+/g, ' ') : ''
+    const key = name.normalize('NFC').toLocaleLowerCase('es')
+
+    // El formulario guarda «Personal» cuando se deja la casa en blanco.
+    if (!key || key === 'personal') {
+      withoutBookmaker++
+      continue
+    }
+
+    if (!groups[key]) {
+      groups[key] = { name, bets: [] }
+      keys.push(key)
+    }
+    groups[key].bets.push(bet)
+  }
+
+  const rows = keys.map((key) => {
+    const group = groups[key]
+    const { profit, roi, total } = getSummary(group.bets)
+    return { name: group.name, balance: Number(profit.toFixed(2)), roi, count: total }
+  })
+
+  rows.sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name, 'es'))
+  return { rows, withoutBookmaker }
+}
+
 export const formatDate = (date) =>
   new Intl.DateTimeFormat('es-SV', {
     day: '2-digit',

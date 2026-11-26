@@ -1,35 +1,35 @@
 # BetIQ
 
-Aplicación web para registrar apuestas y comprender ganancias, pérdidas y retorno de inversión (ROI) en una sola interfaz.
+Aplicación web para registrar jugadas en una bitácora personal y comprender ganancias, pérdidas y retorno de inversión (ROI) en una sola interfaz.
 
 ## Funciones incluidas
 
-- Panel con balance, capital apostado, tasa de acierto y ROI.
-- Registro manual de apuestas con validación dual (HTML5 + JavaScript).
+- Panel con balance, capital arriesgado, efectividad, ROI y ranking de rendimiento por casa.
+- Registro manual y edición de jugadas en modal con validación dual (HTML5 + JavaScript).
 - Modalidad simple o combinada, con múltiples selecciones y cálculo automático de cuota.
-- Registro antes del evento, en vivo o después de que el evento haya finalizado.
-- Historial con búsqueda y filtros.
-- Actualización de resultados pendientes.
-- Análisis por deporte.
-- Persistencia local mediante `localStorage`.
-- Diseño adaptable Mobile-First para computadora, tableta y teléfono.
+- Historial con búsqueda, filtros y cambio de estado en un clic con opción de **Deshacer**.
+- Análisis de gestión de capital e *insights* automáticos por categoría/deporte.
+- Cuentas con correo, contraseña, apodo opcional y declaración de mayoría de edad (SQLite en desarrollo local, Netlify Blobs en Netlify y fallback automático en `localStorage` para hosting estático / WebDAV).
+- Diseño adaptable Mobile-First para teléfono, tableta y computadora.
 
 ## Tecnologías
 
-- HTML5 Semántico y CSS3 (Flexbox, CSS Grid, Media Queries)
+- HTML5 Semántico y CSS3 (Flexbox, CSS Grid, Media Queries Mobile-First)
 - React y JavaScript (JSX)
 - Vite
 - Lucide React para iconos
 
 ## Funciones de Lógica Aplicada
 
-La aplicación implementa directamente las tres funciones definidas por el equipo:
+La aplicación implementa las funciones definidas por el equipo:
 
 - `EsApuestaValida(tipo, monto, cuota)` valida el tipo y los valores antes de guardar.
 - `CalcularResultado(monto, cuota, gano)` devuelve la ganancia neta o la pérdida.
 - `CalcularROI(resultados, montos)` calcula el retorno y evita dividir entre cero.
+- `getBookmakerPerformance(bets)` agrupa resultados por casa de apuestas y calcula balance y ROI.
+- `getCapitalInsight(categories, summary)` resume qué categoría explicó el mayor impacto en dólares.
 
-Para ejecutar las once pruebas descritas en el documento del equipo:
+Para ejecutar todas las pruebas automatizadas:
 
 ```bash
 npm test
@@ -42,7 +42,7 @@ npm install
 npm run dev
 ```
 
-Vite mostrará la dirección local, normalmente `http://localhost:5173`.
+Vite mostrará la dirección local (`http://localhost:5173`) y la dirección en red local (`--host`) para probar desde el teléfono.
 
 ## Crear la versión de producción
 
@@ -52,17 +52,5 @@ npm run preview
 ```
 
 La carpeta lista para publicar se genera en `dist/`.
-
-## Publicar en Netlify
-
-1. Sube este proyecto a un repositorio de GitHub.
-2. En Netlify selecciona **Add new site > Import an existing project**.
-3. Conecta el repositorio.
-4. Netlify detectará automáticamente `npm run build` y la carpeta `dist` gracias a `netlify.toml`.
-5. Selecciona **Deploy site**.
-
-## Nota sobre los datos
-
-Esta primera versión guarda la información en el navegador de cada usuario. No usa cuentas ni base de datos. Una siguiente versión puede incorporar una API y autenticación.
 
 BetIQ es una herramienta de seguimiento y no garantiza resultados. Solo para mayores de 18 años; juega con responsabilidad.

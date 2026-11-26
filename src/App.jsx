@@ -1,40 +1,40 @@
 import { useEffect, useState } from 'react'
+import AccountGate, { accountApi } from './components/AccountGate.jsx'
 import Footer from './components/Footer.jsx'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
-import { sampleBets } from './data/sampleBets.js'
 import Analytics from './pages/Analytics.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import History from './pages/History.jsx'
 import NewBet from './pages/NewBet.jsx'
+import Profile from './pages/Profile.jsx'
 
 const STORAGE_KEY = 'betiq-bets-v1'
 
-function getInitialBets() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    return saved
-      ? JSON.parse(saved).map((bet) => ({
-          modality: bet.type === 'COMBINADA' ? 'COMBINADA' : 'SIMPLE',
-          moment: bet.type === 'EN VIVO' ? 'EN VIVO' : 'ANTES DEL EVENTO',
-          ...bet,
-        }))
-      : sampleBets
-  } catch {
-    return sampleBets
-  }
+export default function App() {
+  return (
+    <AccountGate>
+      {(initial, onExit) => <Tracker key={initial.user.id} initial={initial} onExit={onExit} />}
+    </AccountGate>
+  )
 }
 
-export default function App() {
-  const [bets, setBets] = useState(getInitialBets)
+function Tracker({ initial, onExit }) {
+  const [snapshot, setSnapshot] = useState(initial)
+  const { user, bets, revision } = snapshot
+  const [isSaving, setIsSaving] = useState(false)
+  const [problem, setProblem] = useState('')
   const [page, setPage] = useState('dashboard')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBet, setEditingBet] = useState(null)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bets))
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(bets))
+    } catch {
+      /* Sincronizado en cuenta */
+    }
   }, [bets])
 
   useEffect(() => {
@@ -43,14 +43,41 @@ export default function App() {
     return () => window.clearTimeout(timeout)
   }, [toast])
 
+  function persist(payload, onSuccess) {
+    if (isSaving) return
+    setIsSaving(true)
+
+    accountApi({ ...payload, userId: user.id, revision })
+      .then((next) => {
+        if (next.user) {
+          setSnapshot(next)
+          setProblem('')
+          if (onSuccess) onSuccess()
+        } else {
+          onExit()
+        }
+      })
+      .catch((err) => {
+        if (err.status === 401) {
+          onExit()
+        } else {
+          setProblem(err.message || 'No se pudieron guardar los cambios.')
+        }
+      })
+      .then(() => {
+        setIsSaving(false)
+      })
+  }
+
   const showToast = (message, previousBets = null) => {
     setToast({ message, previousBets, id: Date.now() })
   }
 
   const handleUndo = () => {
     if (toast && toast.previousBets) {
-      setBets(toast.previousBets)
-      setToast({ message: 'Acción deshecha.', previousBets: null, id: Date.now() })
+      persist({ action: 'bets', bets: toast.previousBets }, () => {
+        setToast({ message: 'Acción deshecha.', previousBets: null, id: Date.now() })
+      })
     }
   }
 
@@ -72,48 +99,46 @@ export default function App() {
   const saveBet = (betData) => {
     const previousBets = [...bets]
     const exists = bets.some((item) => item.id === betData.id)
+    const nextBets = exists
+      ? bets.map((item) => (item.id === betData.id ? betData : item))
+      : [betData, ...bets]
 
-    if (exists) {
-      setBets((current) => current.map((item) => (item.id === betData.id ? betData : item)))
-      showToast('Registro actualizado.', previousBets)
-    } else {
-      setBets((current) => [betData, ...current])
-      showToast('Registro guardado en tu bitácora.', previousBets)
-    }
-    closeModal()
+    persist({ action: 'bets', bets: nextBets }, () => {
+      showToast(exists ? 'Registro actualizado.' : 'Registro guardado en tu bitácora.', previousBets)
+      closeModal()
+    })
   }
 
   const updateStatus = (id, status) => {
     const target = bets.find((bet) => bet.id === id)
     if (!target || target.status === status) return
     const previousBets = [...bets]
-    setBets((current) => current.map((bet) => (bet.id === id ? { ...bet, status } : bet)))
-    showToast('Estado actualizado.', previousBets)
+    const nextBets = bets.map((bet) => (bet.id === id ? { ...bet, status } : bet))
+
+    persist({ action: 'bets', bets: nextBets }, () => {
+      showToast('Estado actualizado.', previousBets)
+    })
   }
 
   const deleteBet = (id) => {
     const previousBets = [...bets]
-    setBets((current) => current.filter((bet) => bet.id !== id))
-    showToast('Registro eliminado.', previousBets)
+    const nextBets = bets.filter((bet) => bet.id !== id)
+
+    persist({ action: 'bets', bets: nextBets }, () => {
+      showToast('Registro eliminado.', previousBets)
+    })
   }
 
   return (
     <div className="app-shell">
-      <Sidebar
-        currentPage={page}
-        onNavigate={setPage}
-        isOpen={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        onNewBet={openNewBetModal}
-      />
+      <Sidebar currentPage={page} onNavigate={setPage} />
       <main className="main-content">
-        <Header page={page} onMenu={() => setMenuOpen(true)} onNewBet={openNewBetModal} />
+        <Header page={page} onNewBet={openNewBetModal} />
         <div className="content-area">
           {page === 'dashboard' && (
             <Dashboard
               bets={bets}
               onNavigate={setPage}
-              onNewBet={openNewBetModal}
               onEditBet={openEditBetModal}
               onUpdateStatus={updateStatus}
               onDelete={deleteBet}
@@ -129,6 +154,17 @@ export default function App() {
             />
           )}
           {page === 'analytics' && <Analytics bets={bets} />}
+          {page === 'profile' && (
+            <Profile
+              user={user}
+              onLogout={() => persist({ action: 'logout' })}
+              onSave={(alias) => {
+                persist({ action: 'profile', alias }, () => {
+                  showToast('Apodo guardado.')
+                })
+              }}
+            />
+          )}
         </div>
         <Footer />
       </main>
@@ -138,6 +174,12 @@ export default function App() {
           onSave={saveBet}
           onCancel={closeModal}
         />
+      )}
+      {problem && (
+        <div role="alert" className="account-notice">
+          <span>{problem}</span>
+          <button type="button" onClick={() => window.location.reload()}>Recargar</button>
+        </div>
       )}
       <div className={`toast ${toast ? 'is-visible' : ''}`} role="status" aria-live="polite">
         <span>{toast ? toast.message : ''}</span>
