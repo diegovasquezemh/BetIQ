@@ -5,8 +5,8 @@ import { CalcularResultado, EsApuestaValida, formatMoney } from '../utils/betCal
 
 function createLeg(sport = 'Fútbol') {
   return {
-    id: `leg-${Date.now()}-${Math.random()}`,
-    sport,
+    id: 'leg-' + Date.now() + '-' + Math.random(),
+    sport: sport,
     event: '',
     selection: '',
     odds: '',
@@ -14,9 +14,11 @@ function createLeg(sport = 'Fútbol') {
 }
 
 function buildInitialForm(initialBet) {
+  const today = new Date().toISOString().slice(0, 10)
+
   if (!initialBet) {
     return {
-      date: new Date().toISOString().slice(0, 10),
+      date: today,
       modality: 'SIMPLE',
       moment: 'ANTES DEL EVENTO',
       sport: 'Fútbol',
@@ -34,7 +36,7 @@ function buildInitialForm(initialBet) {
 
   const hasLegs = Array.isArray(initialBet.legs) && initialBet.legs.length >= 2
   return {
-    date: initialBet.date || new Date().toISOString().slice(0, 10),
+    date: initialBet.date || today,
     modality: initialBet.modality === 'COMBINADA' ? 'COMBINADA' : 'SIMPLE',
     moment: initialBet.moment === 'EN VIVO' ? 'EN VIVO' : 'ANTES DEL EVENTO',
     sport: initialBet.sport && initialBet.sport !== 'Combinada' ? initialBet.sport : 'Fútbol',
@@ -48,7 +50,7 @@ function buildInitialForm(initialBet) {
     liveMinute: initialBet.liveMinute || '',
     legs: hasLegs
       ? initialBet.legs.map((leg) => ({
-          id: leg.id || `leg-${Date.now()}-${Math.random()}`,
+          id: leg.id || 'leg-' + Date.now() + '-' + Math.random(),
           sport: leg.sport || 'Fútbol',
           event: leg.event || '',
           selection: leg.selection || '',
@@ -66,13 +68,15 @@ const statusOptions = [
 ]
 
 export default function NewBet({ initialBet = null, onSave, onCancel }) {
-  const [form, setForm] = useState(() => buildInitialForm(initialBet))
+  const [form, setForm] = useState(buildInitialForm(initialBet))
   const [errors, setErrors] = useState({})
   const isEditing = Boolean(initialBet)
 
   useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onCancel()
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        onCancel()
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
@@ -80,7 +84,8 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
 
   let effectiveOdds = Number(form.odds) || 0
   if (form.modality === 'COMBINADA') {
-    if (form.legs.some((leg) => Number(leg.odds) <= 1)) {
+    const hasInvalidLeg = form.legs.some((leg) => Number(leg.odds) <= 1)
+    if (hasInvalidLeg) {
       effectiveOdds = 0
     } else {
       effectiveOdds = form.legs.reduce((total, leg) => total * Number(leg.odds), 1)
@@ -92,17 +97,19 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
   const potentialProfit = canPreview ? CalcularResultado(stakeNumber, effectiveOdds, true) : 0
   const totalReturn = canPreview ? stakeNumber + potentialProfit : 0
 
-  const updateField = ({ target: { name, value } }) => {
+  function updateField(event) {
+    const name = event.target.name
+    const value = event.target.value
     setForm((current) => ({ ...current, [name]: value }))
     setErrors((current) => ({ ...current, [name]: '', general: '' }))
   }
 
-  const setQuickField = (name, value) => {
+  function setQuickField(name, value) {
     setForm((current) => ({ ...current, [name]: value }))
     setErrors((current) => ({ ...current, [name]: '', general: '' }))
   }
 
-  const updateLeg = (index, field, value) => {
+  function updateLeg(index, field, value) {
     setForm((current) => ({
       ...current,
       legs: current.legs.map((leg, legIndex) => (legIndex === index ? { ...leg, [field]: value } : leg)),
@@ -110,11 +117,11 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
     setErrors((current) => ({ ...current, [`leg-${index}-${field}`]: '', general: '' }))
   }
 
-  const addLeg = () => {
+  function addLeg() {
     setForm((current) => ({ ...current, legs: [...current.legs, createLeg(current.sport)] }))
   }
 
-  const removeLeg = (index) => {
+  function removeLeg(index) {
     if (form.legs.length <= 2) return
     setForm((current) => ({
       ...current,
@@ -122,37 +129,53 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
     }))
   }
 
-  const handleSubmit = (event) => {
+  function handleSubmit(event) {
     event.preventDefault()
     const nextErrors = {}
 
-    if (!form.date) nextErrors.date = 'Indica la fecha.'
-    if (!form.stake || Number(form.stake) <= 0) nextErrors.stake = 'Ingresa un monto mayor a 0.'
+    if (!form.date) {
+      nextErrors.date = 'Indica la fecha.'
+    }
+    if (!form.stake || Number(form.stake) <= 0) {
+      nextErrors.stake = 'Ingresa un monto mayor a 0.'
+    }
 
     if (form.modality === 'SIMPLE') {
-      if (!form.event.trim()) nextErrors.event = 'Escribe el partido o jugada.'
-      if (!form.odds || Number(form.odds) <= 1) nextErrors.odds = 'La cuota debe ser mayor a 1.00.'
+      if (!form.event.trim()) {
+        nextErrors.event = 'Escribe el partido o jugada.'
+      }
+      if (!form.odds || Number(form.odds) <= 1) {
+        nextErrors.odds = 'La cuota debe ser mayor a 1.00.'
+      }
     } else {
       form.legs.forEach((leg, index) => {
-        if (!leg.event.trim()) nextErrors[`leg-${index}-event`] = 'Escribe el evento o selección.'
-        if (!leg.odds || Number(leg.odds) <= 1) nextErrors[`leg-${index}-odds`] = 'Mayor a 1.00.'
+        if (!leg.event.trim()) {
+          nextErrors[`leg-${index}-event`] = 'Escribe el evento o selección.'
+        }
+        if (!leg.odds || Number(leg.odds) <= 1) {
+          nextErrors[`leg-${index}-odds`] = 'Mayor a 1.00.'
+        }
       })
     }
 
     const validationType = form.moment === 'EN VIVO' ? 'EN VIVO' : form.modality
     if (!EsApuestaValida(validationType, form.stake, effectiveOdds)) {
-      if (Number(form.stake) <= 0) nextErrors.stake = 'Ingresa un monto mayor a 0.'
-      if (effectiveOdds <= 1) nextErrors.general = 'Verifica que la cuota sea mayor a 1.00.'
+      if (Number(form.stake) <= 0) {
+        nextErrors.stake = 'Ingresa un monto mayor a 0.'
+      }
+      if (effectiveOdds <= 1) {
+        nextErrors.general = 'Verifica que la cuota sea mayor a 1.00.'
+      }
     }
 
-    if (Object.keys(nextErrors).length) {
+    if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       return
     }
 
     const isCombined = form.modality === 'COMBINADA'
     onSave({
-      id: initialBet ? initialBet.id : `bet-${Date.now()}`,
+      id: initialBet ? initialBet.id : 'bet-' + Date.now(),
       date: form.date,
       type: validationType,
       modality: form.modality,
@@ -162,7 +185,7 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
       selection: isCombined
         ? form.legs.map((leg) => (leg.selection ? leg.selection.trim() : leg.event.trim())).join(' + ')
         : form.selection.trim() || 'Registro directo',
-      market: isCombined ? `${form.legs.length} selecciones` : form.market.trim(),
+      market: isCombined ? form.legs.length + ' selecciones' : form.market.trim(),
       bookmaker: form.bookmaker.trim() || 'Personal',
       stake: Number(form.stake),
       odds: Number(effectiveOdds.toFixed(2)),
@@ -320,6 +343,7 @@ export default function NewBet({ initialBet = null, onSave, onCancel }) {
                         <span>Cuota *</span>
                         <input
                           type="number"
+                          inputMode="decimal"
                           min="1.01"
                           step="0.01"
                           value={leg.odds}

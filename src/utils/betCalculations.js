@@ -2,29 +2,40 @@ const VALID_BET_TYPES = ['SIMPLE', 'COMBINADA', 'EN VIVO']
 
 // Las tres funciones siguientes implementan directamente el pseudocódigo
 // presentado por el equipo en el documento BetIQ_Funciones.
-export const EsApuestaValida = (tipo, monto, cuota) =>
-  VALID_BET_TYPES.includes(tipo) && Number(monto) > 0 && Number(cuota) > 1
+export function EsApuestaValida(tipo, monto, cuota) {
+  return VALID_BET_TYPES.includes(tipo) && Number(monto) > 0 && Number(cuota) > 1
+}
 
-export const CalcularResultado = (monto, cuota, gano) =>
-  gano ? Number(monto) * Number(cuota) - Number(monto) : -Number(monto)
+export function CalcularResultado(monto, cuota, gano) {
+  if (gano) {
+    return Number(monto) * Number(cuota) - Number(monto)
+  }
+  return -Number(monto)
+}
 
-export const CalcularROI = (resultados, montos) => {
+export function CalcularROI(resultados, montos) {
   const totalApostado = montos.reduce((total, monto) => total + Number(monto), 0)
 
-  if (totalApostado === 0) return 0
+  if (totalApostado === 0) {
+    return 0
+  }
 
   const totalResultados = resultados.reduce((total, resultado) => total + Number(resultado), 0)
   return (totalResultados / totalApostado) * 100
 }
 
-export const getBetProfit = (bet) => {
-  if (bet.status === 'won') return CalcularResultado(bet.stake, bet.odds, true)
-  if (bet.status === 'lost') return CalcularResultado(bet.stake, bet.odds, false)
+export function getBetProfit(bet) {
+  if (bet.status === 'won') {
+    return CalcularResultado(bet.stake, bet.odds, true)
+  }
+  if (bet.status === 'lost') {
+    return CalcularResultado(bet.stake, bet.odds, false)
+  }
   return 0
 }
 
-export const getSummary = (bets) => {
-  const settled = bets.filter((bet) => ['won', 'lost'].includes(bet.status))
+export function getSummary(bets) {
+  const settled = bets.filter((bet) => bet.status === 'won' || bet.status === 'lost')
   const invested = settled.reduce((total, bet) => total + Number(bet.stake), 0)
   const profit = settled.reduce((total, bet) => total + getBetProfit(bet), 0)
   const wins = settled.filter((bet) => bet.status === 'won').length
@@ -32,8 +43,8 @@ export const getSummary = (bets) => {
   const stakes = settled.map((bet) => bet.stake)
 
   return {
-    invested,
-    profit,
+    invested: invested,
+    profit: profit,
     roi: CalcularROI(results, stakes),
     hitRate: settled.length ? (wins / settled.length) * 100 : 0,
     total: bets.length,
@@ -41,12 +52,13 @@ export const getSummary = (bets) => {
   }
 }
 
-export const formatMoney = (value) =>
-  new Intl.NumberFormat('es-SV', {
+export function formatMoney(value) {
+  return new Intl.NumberFormat('es-SV', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
   }).format(value)
+}
 
 export function getBookmakerPerformance(bets) {
   const groups = {}
@@ -55,9 +67,13 @@ export function getBookmakerPerformance(bets) {
 
   for (let i = 0; i < bets.length; i++) {
     const bet = bets[i]
-    if (bet.status !== 'won' && bet.status !== 'lost') continue
-    const name = typeof bet.bookmaker === 'string' ? bet.bookmaker.trim().replace(/\s+/g, ' ') : ''
-    const key = name.normalize('NFC').toLocaleLowerCase('es')
+    if (bet.status !== 'won' && bet.status !== 'lost') {
+      continue
+    }
+
+    const rawName = typeof bet.bookmaker === 'string' ? bet.bookmaker.trim() : ''
+    const cleanName = rawName.split(/\s+/).filter(Boolean).join(' ')
+    const key = cleanName.toLowerCase()
 
     // El formulario guarda «Personal» cuando se deja la casa en blanco.
     if (!key || key === 'personal') {
@@ -66,7 +82,7 @@ export function getBookmakerPerformance(bets) {
     }
 
     if (!groups[key]) {
-      groups[key] = { name, bets: [] }
+      groups[key] = { name: cleanName, bets: [] }
       keys.push(key)
     }
     groups[key].bets.push(bet)
@@ -74,17 +90,23 @@ export function getBookmakerPerformance(bets) {
 
   const rows = keys.map((key) => {
     const group = groups[key]
-    const { profit, roi, total } = getSummary(group.bets)
-    return { name: group.name, balance: Number(profit.toFixed(2)), roi, count: total }
+    const summary = getSummary(group.bets)
+    return {
+      name: group.name,
+      balance: Number(summary.profit.toFixed(2)),
+      roi: summary.roi,
+      count: summary.total,
+    }
   })
 
   rows.sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name, 'es'))
-  return { rows, withoutBookmaker }
+  return { rows: rows, withoutBookmaker: withoutBookmaker }
 }
 
-export const formatDate = (date) =>
-  new Intl.DateTimeFormat('es-SV', {
+export function formatDate(date) {
+  return new Intl.DateTimeFormat('es-SV', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   }).format(new Date(`${date}T12:00:00`))
+}

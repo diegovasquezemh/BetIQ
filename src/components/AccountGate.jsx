@@ -1,37 +1,32 @@
-import { useEffect, useState } from 'react'
-import { accountApi } from '../utils/accountStorage.js'
+import { useState } from 'react'
+import { loginOrRegisterAccount } from '../utils/accountStorage.js'
 import Logo from './Logo.jsx'
 import './account.css'
 
-export { accountApi }
-
-function Access({ onEnter }) {
+export default function AccountGate({ onLogin }) {
   const [register, setRegister] = useState(false)
   const [alias, setAlias] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [adult, setAdult] = useState(true)
-  const [busy, setBusy] = useState(false)
 
-  const handleSubmit = (event) => {
+  function handleSubmit(event) {
     event.preventDefault()
-    setBusy(true)
 
-    const payload = {
-      action: register ? 'register' : 'login',
-      alias: alias.trim(),
-      email: email.trim() || 'demo@betiq.app',
-      password: password || 'demo',
-      adult: true,
+    const sessionData = loginOrRegisterAccount({
+      alias: alias,
+      email: email,
+      password: password,
+      adult: adult,
+    })
+
+    try {
+      sessionStorage.setItem('betiq-active-user', JSON.stringify(sessionData.user))
+    } catch {
+      /* sessionStorage opcional */
     }
 
-    accountApi(payload)
-      .then((result) => {
-        onEnter(result)
-      })
-      .then(() => {
-        setBusy(false)
-      })
+    onLogin(sessionData)
   }
 
   return (
@@ -99,15 +94,14 @@ function Access({ onEnter }) {
               </label>
             )}
 
-            <button type="submit" className="primary-button" disabled={busy}>
-              {busy ? 'Un momento…' : register ? 'Crear cuenta' : 'Entrar'}
+            <button type="submit" className="primary-button">
+              {register ? 'Crear cuenta' : 'Entrar'}
             </button>
           </form>
 
           <button
             type="button"
             className="text-button account-switch"
-            disabled={busy}
             onClick={() => setRegister(!register)}
           >
             {register ? 'Ya tengo cuenta · Iniciar sesión' : '¿Primera vez en BetIQ? Crear cuenta'}
@@ -116,56 +110,4 @@ function Access({ onEnter }) {
       </div>
     </main>
   )
-}
-
-export default function AccountGate({ children }) {
-  const [snapshot, setSnapshot] = useState(null)
-
-  useEffect(() => {
-    let mounted = true
-
-    accountApi().then((data) => {
-      if (mounted) setSnapshot(data)
-    })
-
-    function sessionChanged(event) {
-      if (event.key === 'betiq-session-change') window.location.reload()
-    }
-
-    window.addEventListener('storage', sessionChanged)
-    return () => {
-      mounted = false
-      window.removeEventListener('storage', sessionChanged)
-    }
-  }, [])
-
-  function switchAccount(data) {
-    setSnapshot(data)
-    try {
-      localStorage.setItem('betiq-session-change', String(Date.now()))
-      if (data && data.user) {
-        sessionStorage.setItem('betiq-active-user', JSON.stringify(data.user))
-      } else {
-        sessionStorage.removeItem('betiq-active-user')
-      }
-    } catch {
-      /* Almacenamiento local */
-    }
-  }
-
-  if (!snapshot) {
-    return (
-      <main className="account-home">
-        <div className="account-body" role="status">
-          <p>Abriendo BetIQ…</p>
-        </div>
-      </main>
-    )
-  }
-
-  if (!snapshot.user) {
-    return <Access onEnter={switchAccount} />
-  }
-
-  return children(snapshot, () => switchAccount({ user: null }))
 }

@@ -4,24 +4,28 @@ const LOCAL_ACCOUNTS_KEY = 'betiq-accounts-v1'
 const LOCAL_SESSION_KEY = 'betiq-active-email-v1'
 
 function getStorage(customStorage) {
-  if (customStorage) return customStorage
+  if (customStorage) {
+    return customStorage
+  }
   return window.localStorage
 }
 
-function getAccounts(storage) {
+export function getStoredAccounts(customStorage) {
+  const storage = getStorage(customStorage)
   try {
-    const raw = storage.getItem(LOCAL_ACCOUNTS_KEY)
-    return raw ? JSON.parse(raw) : {}
+    const datosGuardados = storage.getItem(LOCAL_ACCOUNTS_KEY)
+    return datosGuardados ? JSON.parse(datosGuardados) : {}
   } catch {
     return {}
   }
 }
 
-function saveAccounts(storage, accounts) {
+export function saveStoredAccounts(accounts, customStorage) {
+  const storage = getStorage(customStorage)
   storage.setItem(LOCAL_ACCOUNTS_KEY, JSON.stringify(accounts))
 }
 
-function toSnapshot(record) {
+function buildSnapshot(record) {
   return {
     user: {
       id: record.id,
@@ -29,87 +33,116 @@ function toSnapshot(record) {
       alias: record.alias,
       adultAt: record.adultAt,
     },
-    revision: record.revision || 0,
     bets: Array.isArray(record.bets) ? record.bets : [],
   }
 }
 
+export function getActiveSession(customStorage) {
+  const storage = getStorage(customStorage)
+  const accounts = getStoredAccounts(storage)
+  const activeEmail = storage.getItem(LOCAL_SESSION_KEY) || ''
+  const current = activeEmail ? accounts[activeEmail] : null
+
+  if (!current) {
+    return { user: null, bets: [] }
+  }
+  return buildSnapshot(current)
+}
+
+export function loginOrRegisterAccount(datos, customStorage) {
+  const storage = getStorage(customStorage)
+  const accounts = getStoredAccounts(storage)
+
+  const rawEmail = typeof datos.email === 'string' ? datos.email.trim() : ''
+  const email = (rawEmail || 'demo@betiq.app').toLowerCase()
+  const rawAlias = typeof datos.alias === 'string' ? datos.alias.trim() : ''
+  const defaultAlias = rawAlias || email.split('@')[0] || 'Usuario'
+
+  let record = accounts[email]
+  if (!record) {
+    record = {
+      id: 'user-' + Date.now(),
+      email: email,
+      alias: defaultAlias.slice(0, 40),
+      adultAt: new Date().toISOString(),
+      bets: sampleBets.map((bet) => ({ ...bet })),
+    }
+  } else if (rawAlias) {
+    record.alias = rawAlias.slice(0, 40)
+  }
+
+  accounts[email] = record
+  saveStoredAccounts(accounts, storage)
+  storage.setItem(LOCAL_SESSION_KEY, email)
+  return buildSnapshot(record)
+}
+
+export function updateAccountBets(nextBets, customStorage) {
+  const storage = getStorage(customStorage)
+  const accounts = getStoredAccounts(storage)
+  const activeEmail = storage.getItem(LOCAL_SESSION_KEY) || 'demo@betiq.app'
+
+  let record = accounts[activeEmail]
+  if (!record) {
+    record = {
+      id: 'user-' + Date.now(),
+      email: activeEmail,
+      alias: 'Usuario',
+      adultAt: new Date().toISOString(),
+      bets: [],
+    }
+  }
+
+  record.bets = Array.isArray(nextBets) ? nextBets : []
+  accounts[activeEmail] = record
+  saveStoredAccounts(accounts, storage)
+  return buildSnapshot(record)
+}
+
+export function updateAccountAlias(nextAlias, customStorage) {
+  const storage = getStorage(customStorage)
+  const accounts = getStoredAccounts(storage)
+  const activeEmail = storage.getItem(LOCAL_SESSION_KEY) || 'demo@betiq.app'
+
+  const record = accounts[activeEmail]
+  if (!record) {
+    return { user: null, bets: [] }
+  }
+
+  record.alias = typeof nextAlias === 'string' ? nextAlias.trim().slice(0, 40) : ''
+  accounts[activeEmail] = record
+  saveStoredAccounts(accounts, storage)
+  return buildSnapshot(record)
+}
+
+export function logoutAccount(customStorage) {
+  const storage = getStorage(customStorage)
+  storage.removeItem(LOCAL_SESSION_KEY)
+  return { user: null, bets: [] }
+}
+
 export function accountApi(payload, customStorage) {
   return new Promise((resolve) => {
-    const storage = getStorage(customStorage)
-    const accounts = getAccounts(storage)
-    const activeEmail = storage.getItem(LOCAL_SESSION_KEY) || ''
-
     if (!payload) {
-      const current = activeEmail ? accounts[activeEmail] : null
-      resolve(current ? toSnapshot(current) : { user: null })
+      resolve(getActiveSession(customStorage))
       return
     }
-
     if (payload.action === 'register' || payload.action === 'login') {
-      const rawEmail = typeof payload.email === 'string' ? payload.email.trim() : ''
-      const email = (rawEmail || 'demo@betiq.app').toLowerCase()
-      const rawAlias = typeof payload.alias === 'string' ? payload.alias.trim() : ''
-      const defaultAlias = rawAlias || email.split('@')[0] || 'Usuario'
-
-      let record = accounts[email]
-      if (!record) {
-        record = {
-          id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          email,
-          alias: defaultAlias.slice(0, 40),
-          adultAt: new Date().toISOString(),
-          revision: 0,
-          bets: sampleBets.map((bet) => ({ ...bet })),
-        }
-      } else if (rawAlias) {
-        record.alias = rawAlias.slice(0, 40)
-      }
-
-      accounts[email] = record
-      saveAccounts(storage, accounts)
-      storage.setItem(LOCAL_SESSION_KEY, email)
-      resolve(toSnapshot(record))
+      resolve(loginOrRegisterAccount(payload, customStorage))
       return
     }
-
     if (payload.action === 'logout') {
-      storage.removeItem(LOCAL_SESSION_KEY)
-      resolve({ user: null })
+      resolve(logoutAccount(customStorage))
       return
     }
-
-    let record = activeEmail ? accounts[activeEmail] : null
-    if (!record) {
-      record = {
-        id: `user-${Date.now()}`,
-        email: activeEmail || 'demo@betiq.app',
-        alias: 'Usuario',
-        adultAt: new Date().toISOString(),
-        revision: 0,
-        bets: sampleBets.map((bet) => ({ ...bet })),
-      }
-    }
-
     if (payload.action === 'profile') {
-      const nextAlias = typeof payload.alias === 'string' ? payload.alias.trim().slice(0, 40) : ''
-      record.alias = nextAlias
-      record.revision = (record.revision || 0) + 1
-      accounts[record.email] = record
-      saveAccounts(storage, accounts)
-      resolve(toSnapshot(record))
+      resolve(updateAccountAlias(payload.alias, customStorage))
       return
     }
-
-    if (payload.action === 'bets' && Array.isArray(payload.bets)) {
-      record.bets = payload.bets
-      record.revision = (record.revision || 0) + 1
-      accounts[record.email] = record
-      saveAccounts(storage, accounts)
-      resolve(toSnapshot(record))
+    if (payload.action === 'bets') {
+      resolve(updateAccountBets(payload.bets, customStorage))
       return
     }
-
-    resolve(toSnapshot(record))
+    resolve(getActiveSession(customStorage))
   })
 }

@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { formatMoney, getBookmakerPerformance } from '../utils/betCalculations.js'
 
-const percent = new Intl.NumberFormat('es-SV', { style: 'percent', maximumFractionDigits: 1 })
-
 export default function BookmakerPerformance({ bets, onHistory }) {
   const [expanded, setExpanded] = useState(false)
-  const { rows, withoutBookmaker } = getBookmakerPerformance(bets)
+  const performance = getBookmakerPerformance(bets)
+  const rows = performance.rows
+  const withoutBookmaker = performance.withoutBookmaker
   const visible = expanded ? rows : rows.slice(0, 3)
 
   return (
@@ -47,10 +47,10 @@ export default function BookmakerPerformance({ bets, onHistory }) {
                   <tr key={row.name}>
                     <th scope="row">{row.name}</th>
                     <td className={row.balance > 0 ? 'positive-text' : row.balance < 0 ? 'negative-text' : ''}>
-                      {row.balance > 0 && '+'}
+                      {row.balance > 0 ? '+' : ''}
                       {formatMoney(row.balance || 0)}
                     </td>
-                    <td>{percent.format(row.roi / 100)}</td>
+                    <td>{row.roi.toFixed(1)}%</td>
                     <td>{row.count}</td>
                   </tr>
                 ))}
