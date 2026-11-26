@@ -8,7 +8,7 @@ Aplicación web para registrar jugadas en una bitácora personal y comprender ga
 - Registro manual y edición de jugadas en modal con validación dual (HTML5 + JavaScript).
 - Modalidad simple o combinada, con múltiples selecciones y cálculo automático de cuota.
 - Historial con búsqueda, filtros y cambio de estado en un clic con opción de **Deshacer**.
-- Análisis de gestión de capital e *insights* automáticos por categoría/deporte.
+- Análisis de gestión de capital e _insights_ automáticos por categoría/deporte.
 - Cuentas con correo, contraseña, apodo opcional y declaración de mayoría de edad (SQLite en desarrollo local, Netlify Blobs en Netlify y fallback automático en `localStorage` para hosting estático / WebDAV).
 - Diseño adaptable Mobile-First para teléfono, tableta y computadora.
 
@@ -54,3 +54,4 @@ npm run preview
 La carpeta lista para publicar se genera en `dist/`.
 
 BetIQ es una herramienta de seguimiento y no garantiza resultados. Solo para mayores de 18 años; juega con responsabilidad.
+o
