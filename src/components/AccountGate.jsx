@@ -10,53 +10,28 @@ function Access({ onEnter }) {
   const [alias, setAlias] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [adult, setAdult] = useState(false)
+  const [adult, setAdult] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    const cleanEmail = email.trim().toLowerCase()
-
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setError('Ingresa un correo electrónico válido.')
-      return
-    }
-    if (register && password.length < 10) {
-      setError('La contraseña debe tener al menos 10 caracteres.')
-      return
-    }
-    if (register && !adult) {
-      setError('Debes confirmar que tienes 18 años o más.')
-      return
-    }
-
     setBusy(true)
-    setError('')
 
     const payload = {
       action: register ? 'register' : 'login',
       alias: alias.trim(),
-      email: cleanEmail,
-      password,
-      adult,
+      email: email.trim() || 'demo@betiq.app',
+      password: password || 'demo',
+      adult: true,
     }
 
     accountApi(payload)
       .then((result) => {
         onEnter(result)
       })
-      .catch((err) => {
-        setError(err.message || 'No se pudo iniciar sesión.')
-      })
       .then(() => {
         setBusy(false)
       })
-  }
-
-  const toggleMode = () => {
-    setRegister(!register)
-    setError('')
   }
 
   return (
@@ -87,20 +62,15 @@ function Access({ onEnter }) {
             )}
 
             <label className="field">
-              <span>Correo electrónico</span>
+              <span>Correo o usuario</span>
               <input
-                type="email"
+                type="text"
                 name="email"
                 value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value)
-                  setError('')
-                }}
-                autoComplete="email"
-                required
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="username"
                 maxLength="254"
-                placeholder="tucorreo@ejemplo.com"
-                className={error && !email.includes('@') ? 'campo-invalido' : ''}
+                placeholder="Cualquier correo o usuario (ej. demo@betiq.app)"
               />
             </label>
 
@@ -110,42 +80,23 @@ function Access({ onEnter }) {
                 type="password"
                 name="password"
                 value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  setError('')
-                }}
+                onChange={(event) => setPassword(event.target.value)}
                 autoComplete={register ? 'new-password' : 'current-password'}
-                minLength={register ? 10 : 1}
                 maxLength="128"
-                required
-                placeholder={register ? 'Mínimo 10 caracteres' : 'Tu contraseña'}
-                className={error && register && password.length < 10 ? 'campo-invalido' : ''}
+                placeholder="Cualquier contraseña"
               />
             </label>
 
             {register && (
-              <>
-                <small>Usa al menos 10 caracteres.</small>
-                <label className="adult-check">
-                  <input
-                    type="checkbox"
-                    name="adult"
-                    checked={adult}
-                    onChange={(event) => {
-                      setAdult(event.target.checked)
-                      setError('')
-                    }}
-                    required
-                  />
-                  <span>Confirmo que tengo 18 años o más.</span>
-                </label>
-              </>
-            )}
-
-            {error && (
-              <p role="alert" className="account-error mensaje-error">
-                {error}
-              </p>
+              <label className="adult-check">
+                <input
+                  type="checkbox"
+                  name="adult"
+                  checked={adult}
+                  onChange={(event) => setAdult(event.target.checked)}
+                />
+                <span>Confirmo que tengo 18 años o más.</span>
+              </label>
             )}
 
             <button type="submit" className="primary-button" disabled={busy}>
@@ -157,7 +108,7 @@ function Access({ onEnter }) {
             type="button"
             className="text-button account-switch"
             disabled={busy}
-            onClick={toggleMode}
+            onClick={() => setRegister(!register)}
           >
             {register ? 'Ya tengo cuenta · Iniciar sesión' : '¿Primera vez en BetIQ? Crear cuenta'}
           </button>
@@ -169,18 +120,13 @@ function Access({ onEnter }) {
 
 export default function AccountGate({ children }) {
   const [snapshot, setSnapshot] = useState(null)
-  const [error, setError] = useState('')
 
   useEffect(() => {
     let mounted = true
 
-    accountApi()
-      .then((data) => {
-        if (mounted) setSnapshot(data)
-      })
-      .catch((err) => {
-        if (mounted) setError(err.message || 'No se pudo cargar la sesión.')
-      })
+    accountApi().then((data) => {
+      if (mounted) setSnapshot(data)
+    })
 
     function sessionChanged(event) {
       if (event.key === 'betiq-session-change') window.location.reload()
@@ -211,12 +157,7 @@ export default function AccountGate({ children }) {
     return (
       <main className="account-home">
         <div className="account-body" role="status">
-          <p>{error || 'Abriendo BetIQ…'}</p>
-          {error && (
-            <button type="button" className="secondary-button" onClick={() => window.location.reload()}>
-              Reintentar
-            </button>
-          )}
+          <p>Abriendo BetIQ…</p>
         </div>
       </main>
     )

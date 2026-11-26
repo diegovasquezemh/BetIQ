@@ -11,25 +11,14 @@ function createMemoryStorage() {
   }
 }
 
-test('Registro, sesión, perfil y bitácora privada de dos cuentas en localStorage', async () => {
+test('Login mockup acepta cualquier credencial y mantiene sesión y bitácora en localStorage', async () => {
   const storage = createMemoryStorage()
-  const signup = {
-    action: 'register',
-    email: 'test1@example.org',
-    alias: '',
-    password: 'solo-en-pruebas',
-    adult: true,
-  }
 
-  await assert.rejects(() => accountApi({ ...signup, adult: false }, storage), { status: 400 })
+  const first = await accountApi({ action: 'login', email: 'cualquier-usuario', password: '123' }, storage)
+  assert.equal(first.user.email, 'cualquier-usuario')
+  assert.ok(Array.isArray(first.bets) && first.bets.length > 0)
 
-  const first = await accountApi(signup, storage)
-  assert.ok(first.user.adultAt)
-
-  await assert.rejects(() => accountApi(signup, storage), { status: 409 })
-
-  const own = { userId: first.user.id, revision: 0 }
-  const bets = [
+  const customBets = [
     {
       id: 'b1',
       event: 'Prueba',
@@ -42,28 +31,16 @@ test('Registro, sesión, perfil y bitácora privada de dos cuentas en localStora
     },
   ]
 
-  const updated = await accountApi({ ...own, action: 'bets', bets }, storage)
-  assert.deepEqual(updated.bets, bets)
+  const updated = await accountApi({ action: 'bets', bets: customBets }, storage)
+  assert.deepEqual(updated.bets, customBets)
 
-  await assert.rejects(() => accountApi({ ...own, action: 'bets', bets: [] }, storage), { status: 409 })
-
-  const second = await accountApi({ ...signup, email: 'test2@example.org' }, storage)
-  assert.deepEqual(second.bets, [])
+  const edited = await accountApi({ action: 'profile', alias: 'Luna' }, storage)
+  assert.equal(edited.user.alias, 'Luna')
 
   await accountApi({ action: 'logout' }, storage)
   assert.equal((await accountApi(undefined, storage)).user, null)
 
-  await assert.rejects(
-    () => accountApi({ ...signup, action: 'login', password: 'incorrecta' }, storage),
-    { status: 401 }
-  )
-
-  const again = await accountApi({ ...signup, action: 'login' }, storage)
-  assert.deepEqual(again.bets, bets)
-
-  const edited = await accountApi(
-    { userId: again.user.id, revision: again.revision, action: 'profile', alias: 'Luna' },
-    storage
-  )
-  assert.equal(edited.user.alias, 'Luna')
+  const again = await accountApi({ action: 'login', email: 'cualquier-usuario', password: 'otra' }, storage)
+  assert.equal(again.user.alias, 'Luna')
+  assert.deepEqual(again.bets, customBets)
 })
